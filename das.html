@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SecureDedup</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #00d4ff;
+            --secondary-color: #ff00ff;
+            --accent-color: #00ff88;
+            --dark-color: #0a0a1a;
+            --light-color: #f5f5f5;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-light: #ffffff;
+            --text-dark: #333333;
+            --neon-blue: #00d4ff;
+            --neon-purple: #ff00ff;
+            --neon-green: #00ff88;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--dark-color);
+            min-height: 100vh;
+            color: var(--text-light);
+            overflow-x: hidden;
+        }
+
+        /* 3D Canvas Background */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        /* Advanced Preloader - No Circles */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .loader.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loader-content {
+            text-align: center;
+            position: relative;
+        }
+
+        .loader-icon-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loader-icon {
+            font-size: 4rem;
+            color: var(--neon-blue);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .loader-text {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple), var(--neon-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .progress-container {
+            width: 300px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple), var(--neon-green));
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.7);
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.4),
+                transparent
+            );
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-percentage {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-light);
+            letter-spacing: 1px;
+        }
+
+        /* Glass Effect */
+        .glass-effect {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 0 20px rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .glass-effect:hover {
+            box-shadow: 
+                0 12px 40px rgba(0, 0, 0, 0.4),
+                inset 0 0 30px rgba(255, 255, 255, 0.1),
+                0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 70px;
+            z-index: 1000;
+            background: rgba(10, 10, 26, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 0 2rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--text-light);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo i {
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.7);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 1.2rem;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .user-session {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            z-index: -1;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary::before {
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+        }
+
+        .btn-secondary::before {
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+        }
+
+        .btn-primary {
+            color: var(--text-light);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-secondary {
+            color: var(--text-light);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ed8936;
+            color: white;
+        }
+
+        .btn-info {
+            background: #4299e1;
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary:hover::before {
+            background: linear-gradient(45deg, var(--neon-purple), var(--neon-green));
+        }
+
+        .btn-secondary:hover::before {
+            background: linear-gradient(45deg, var(--neon-purple), var(--neon-green));
+        }
+
+        /* Dashboard Layout */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            min-height: 100vh;
+            padding-top: 70px;
+        }
+
+        /* Sidebar with Avatar */
+        .sidebar {
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-right: 1px solid var(--glass-border);
+        }
+
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .sidebar-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 2rem;
+            margin: 0 auto 1rem;
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar-user-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-user-role {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            color: var(--neon-blue);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 0.8rem;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            color: var(--text-light);
+            text-decoration: none;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-menu a::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .sidebar-menu a:hover::before {
+            left: 100%;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background: var(--glass-bg);
+            transform: translateX(10px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar-menu a i {
+            color: var(--neon-blue);
+            font-size: 1.2rem;
+            width: 20px;
+            text-align: center;
+        }
+
+        .main-content {
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .content-section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        .welcome-section {
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .welcome-section h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple), var(--neon-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .welcome-section p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Updated Stats Grid - No Internal Hover Effects */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            border: 2px solid transparent;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border: 2px solid var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            color: var(--neon-blue);
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.7);
+        }
+
+        .stat-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--neon-green);
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .file-section {
+            margin-bottom: 2rem;
+        }
+
+        .file-section h3 {
+            margin-bottom: 1rem;
+            color: var(--neon-blue);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .file-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .file-card {
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .file-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .file-info h4 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-meta {
+            display: flex;
+            gap: 1.5rem;
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .access-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .access-read {
+            background: rgba(66, 153, 225, 0.3);
+            color: #4299e1;
+        }
+
+        .access-write {
+            background: rgba(72, 187, 120, 0.3);
+            color: #48bb78;
+        }
+
+        .access-owner {
+            background: rgba(237, 137, 54, 0.3);
+            color: #ed8936;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            opacity: 0.7;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: var(--neon-blue);
+        }
+
+        .flash {
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 10px;
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+        }
+
+        .flash.success {
+            background: rgba(72, 187, 120, 0.2);
+            color: #48bb78;
+            border-left: 4px solid #48bb78;
+        }
+
+        .flash.error {
+            background: rgba(245, 101, 101, 0.2);
+            color: #f56565;
+            border-left: 4px solid #f56565;
+        }
+
+        .shared-access-list {
+            margin-top: 2rem;
+        }
+
+        .access-card {
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .access-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .access-info h4 {
+            margin-bottom: 0.5rem;
+        }
+
+        .access-meta {
+            display: flex;
+            gap: 1.5rem;
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .action-card {
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .action-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .action-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--neon-blue);
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.7);
+        }
+
+        /* Alert System */
+        .alert-container {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            z-index: 1100;
+            max-width: 400px;
+        }
+
+        .alert {
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            border-radius: 10px;
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .alert.show {
+            transform: translateX(0);
+        }
+
+        .alert.success {
+            background: rgba(72, 187, 120, 0.2);
+            color: #48bb78;
+            border-left: 4px solid #48bb78;
+        }
+
+        .alert.error {
+            background: rgba(245, 101, 101, 0.2);
+            color: #f56565;
+            border-left: 4px solid #f56565;
+        }
+
+        .alert.info {
+            background: rgba(66, 153, 225, 0.2);
+            color: #4299e1;
+            border-left: 4px solid #4299e1;
+        }
+
+        .alert.warning {
+            background: rgba(237, 137, 54, 0.2);
+            color: #ed8936;
+            border-left: 4px solid #ed8936;
+        }
+
+        .alert-icon {
+            font-size: 1.5rem;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .alert-message {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .alert-close {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 1.2rem;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        .alert-close:hover {
+            opacity: 1;
+        }
+
+        /* Fixed Select Dropdown Styles */
+        select {
+            background: var(--glass-bg) !important;
+            color: var(--text-light) !important;
+            border: 1px solid var(--glass-border) !important;
+            backdrop-filter: blur(15px) !important;
+        }
+
+        select option {
+            background: var(--dark-color) !important;
+            color: var(--text-light) !important;
+            padding: 1rem !important;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--neon-blue) !important;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5) !important;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+
+            .alert-container {
+                left: 20px;
+                right: 20px;
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 3D Canvas Background -->
+    <div id="canvas-container"></div>
+
+    <!-- Advanced Preloader -->
+    <div class="loader" id="loader">
+        <div class="loader-content">
+            <div class="loader-icon-container">
+                <div class="loader-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+            </div>
+            <div class="loader-text">SecureDedup</div>
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-percentage" id="progressPercentage">0%</div>
+        </div>
+    </div>
+
+    <!-- Alert Container -->
+    <div class="alert-container" id="alertContainer"></div>
+
+    <header class="header">
+        <nav class="navbar">
+            <a href="/" class="logo">
+                <i class="fas fa-shield-alt"></i> SecureDedup
+            </a>
+            <div class="nav-links">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <div class="user-details">
+                        <div class="user-name" id="userName">User</div>
+                        <div class="user-session" id="userSession">Active now</div>
+                    </div>
+                </div>
+                <a href="/logout" class="btn btn-secondary">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-avatar" id="sidebarAvatar">U</div>
+                <div class="sidebar-user-name" id="sidebarUserName">User</div>
+                <div class="sidebar-user-role">Premium Member</div>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="#" class="active" data-section="dashboard-home">
+                    <i class="fas fa-home"></i> Dashboard
+                </a></li>
+                <li><a href="#" data-section="upload-section">
+                    <i class="fas fa-upload"></i> Upload Files
+                </a></li>
+                <li><a href="#" data-section="files-section">
+                    <i class="fas fa-file"></i> My Files & Shared
+                </a></li>
+                <li><a href="#" data-section="share-section">
+                    <i class="fas fa-share-alt"></i> Share Files
+                </a></li>
+                <li><a href="#" data-section="manage-access-section">
+                    <i class="fas fa-user-cog"></i> Manage Access
+                </a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="flash success">
+                        {{ messages[0] }}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div id="dashboard-home" class="content-section active">
+                <div class="welcome-section glass-effect">
+                    <h1>Welcome to Your Dashboard</h1>
+                    <p>Manage your secure cloud storage with advanced deduplication and access control features.</p>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card glass-effect">
+                            <i class="fas fa-file stat-icon"></i>
+                            <div class="stat-content">
+                                <div class="stat-number" id="owned-file-count">{{ owned_files|length }}</div>
+                                <div class="stat-label">My Files</div>
+                            </div>
+                        </div>
+                        <div class="stat-card glass-effect">
+                            <i class="fas fa-share-square stat-icon"></i>
+                            <div class="stat-content">
+                                <div class="stat-number" id="shared-file-count">{{ shared_files|length }}</div>
+                                <div class="stat-label">Shared With Me</div>
+                            </div>
+                        </div>
+                        <div class="stat-card glass-effect">
+                            <i class="fas fa-users stat-icon"></i>
+                            <div class="stat-content">
+                                <div class="stat-number" id="shared-by-me-count">{{ shared_access|length if shared_access else 0 }}</div>
+                                <div class="stat-label">Shared By Me</div>
+                            </div>
+                        </div>
+                        <div class="stat-card glass-effect">
+                            <i class="fas fa-database stat-icon"></i>
+                            <div class="stat-content">
+                                <div class="stat-number" id="space-saved">{{ ((owned_files|length + shared_files|length) * 35)|round }}%</div>
+                                <div class="stat-label">Space Saved</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions Section -->
+                    <div class="quick-actions">
+                        <div class="action-card glass-effect">
+                            <div class="action-icon">
+                                <i class="fas fa-upload"></i>
+                            </div>
+                            <h3>Upload Files</h3>
+                            <p>Secure upload with intelligent deduplication</p>
+                            <a href="#" class="btn btn-primary" style="margin-top: 1rem;" onclick="showSection('upload-section')">
+                                Start Uploading
+                            </a>
+                        </div>
+                        
+                        <div class="action-card glass-effect">
+                            <div class="action-icon">
+                                <i class="fas fa-share-alt"></i>
+                            </div>
+                            <h3>Share Files</h3>
+                            <p>Grant access to other users</p>
+                            <a href="#" class="btn btn-primary" style="margin-top: 1rem;" onclick="showSection('share-section')">
+                                Share Files
+                            </a>
+                        </div>
+                        
+                        <div class="action-card glass-effect">
+                            <div class="action-icon">
+                                <i class="fas fa-user-cog"></i>
+                            </div>
+                            <h3>Manage Access</h3>
+                            <p>Revoke or modify permissions</p>
+                            <a href="#" class="btn btn-info" style="margin-top: 1rem;" onclick="showSection('manage-access-section')">
+                                Manage Access
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Recent Shared Files Preview -->
+                    {% if shared_access %}
+                    <div style="margin-top: 3rem;">
+                        <h3 style="margin-bottom: 1.5rem; color: var(--neon-blue);">
+                            <i class="fas fa-clock"></i> Recently Shared Files
+                        </h3>
+                        <div class="file-grid">
+                            {% for access in shared_access[:3] %}  <!-- Show only 3 recent shares -->
+                            <div class="access-card glass-effect">
+                                <div class="access-info">
+                                    <h4>{{ access[2] }}</h4>
+                                    <div class="access-meta">
+                                        <span>Shared with: <strong>{{ access[3] }}</strong></span>
+                                        <span>Access: <span class="access-badge {% if access[4] == 'write' %}access-write{% else %}access-read{% endif %}">{{ access[4]|title }}</span></span>
+                                        <span>Since: {{ access[5].strftime('%Y-%m-%d') }}</span>
+                                    </div>
+                                </div>
+                                <div class="file-actions">
+                                    <form method="POST" action="/revoke-access" style="display: inline;">
+                                        <input type="hidden" name="access_id" value="{{ access[0] }}">
+                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to revoke access from {{ access[3] }}?')">
+                                            <i class="fas fa-ban"></i> Revoke
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if shared_access|length > 3 %}
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <a href="#" class="btn btn-secondary" onclick="showSection('manage-access-section')">
+                                View All Shared Files ({{ shared_access|length }})
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div id="upload-section" class="content-section">
+                <div class="glass-effect" style="padding: 2rem;">
+                    <h2><i class="fas fa-upload"></i> Upload File</h2>
+                    <form method="POST" enctype="multipart/form-data" action="/upload">
+                        <div style="margin: 2rem 0;">
+                            <input type="file" name="file" required 
+                                   style="width: 100%; padding: 1rem; border: 2px dashed var(--glass-border); border-radius: 10px; background: var(--glass-bg); color: var(--text-light);">
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Upload with Deduplication
+                        </button>
+                    </form>
+                    
+                    <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(0,0,0,0.2); border-radius: 10px;">
+                        <h4><i class="fas fa-info-circle"></i> How Secure Deduplication Works:</h4>
+                        <ul style="margin-top: 1rem; padding-left: 1.5rem;">
+                            <li>Files are split into secure 1MB chunks</li>
+                            <li>Each chunk encrypted with Mixed MLE</li>
+                            <li>Duplicate chunks automatically detected</li>
+                            <li>Storage optimized without compromising security</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div id="files-section" class="content-section">
+                <div class="glass-effect" style="padding: 2rem;">
+                    <h2><i class="fas fa-file"></i> My Files & Shared Files</h2>
+                    
+                    <!-- Owned Files Section -->
+                    <div class="file-section">
+                        <h3><i class="fas fa-user"></i> My Files ({{ owned_files|length }})</h3>
+                        {% if owned_files %}
+                            <div class="file-grid">
+                                {% for file in owned_files %}
+                                <div class="file-card glass-effect">
+                                    <div class="file-info">
+                                        <h4>{{ file[1] }}</h4>
+                                        <div class="file-meta">
+                                            <span><i class="fas fa-weight-hanging"></i> {{ (file[2] / 1024 / 1024)|round(2) }} MB</span>
+                                            <span><i class="fas fa-calendar"></i> {{ file[3].strftime('%Y-%m-%d') if file[3] else 'Unknown' }}</span>
+                                            <span class="access-badge access-owner">Owner</span>
+                                        </div>
+                                    </div>
+                                    <div class="file-actions">
+                                        <a href="/download/{{ file[0] }}" class="btn btn-success btn-sm">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                        <button class="btn btn-primary btn-sm" onclick="showSection('share-section')">
+                                            <i class="fas fa-share-alt"></i> Share
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-state">
+                                <i class="fas fa-folder-open"></i>
+                                <h3>No Files Uploaded Yet</h3>
+                                <p>Upload your first file to get started with secure deduplication.</p>
+                                <button class="btn btn-primary" onclick="showSection('upload-section')" style="margin-top: 1rem;">
+                                    <i class="fas fa-upload"></i> Upload First File
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Shared Files Section -->
+                    <div class="file-section">
+                        <h3><i class="fas fa-share-alt"></i> Shared With Me ({{ shared_files|length }})</h3>
+                        {% if shared_files %}
+                            <div class="file-grid">
+                                {% for file in shared_files %}
+                                <div class="file-card glass-effect">
+                                    <div class="file-info">
+                                        <h4>{{ file[1] }} <small style="opacity: 0.7;">(by {{ file[5] }})</small></h4>
+                                        <div class="file-meta">
+                                            <span><i class="fas fa-weight-hanging"></i> {{ (file[2] / 1024 / 1024)|round(2) }} MB</span>
+                                            <span><i class="fas fa-calendar"></i> {{ file[3].strftime('%Y-%m-%d') if file[3] else 'Unknown' }}</span>
+                                            <span class="access-badge {% if file[4] == 'write' %}access-write{% else %}access-read{% endif %}">
+                                                {{ file[4]|title }} Access
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="file-actions">
+                                        {% if file[4] in ['read', 'write'] %}
+                                        <a href="/download/{{ file[0] }}" class="btn btn-success btn-sm">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                        {% endif %}
+                                        {% if file[4] == 'write' %}
+                                        <a href="/edit/{{ file[0] }}" class="btn btn-warning btn-sm">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-state">
+                                <i class="fas fa-users"></i>
+                                <h3>No Shared Files</h3>
+                                <p>No one has shared any files with you yet.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div id="share-section" class="content-section">
+                <div class="glass-effect" style="padding: 2rem;">
+                    <h2><i class="fas fa-share-alt"></i> Share Files</h2>
+                    
+                    <!-- Grant Access Form -->
+                    <div style="margin-bottom: 3rem;">
+                        <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-user-plus"></i> Grant New Access</h3>
+                        <form method="POST" action="/share">
+                            <div style="display: grid; gap: 1.5rem;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Select File</label>
+                                    <select name="file_id" required style="width: 100%; padding: 1rem; border-radius: 10px; background: var(--glass-bg); color: var(--text-light); border: 1px solid var(--glass-border);">
+                                        <option value="">Choose a file...</option>
+                                        {% for file in owned_files %}
+                                        <option value="{{ file[0] }}">{{ file[1] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Username to Share With</label>
+                                    <input type="text" name="username" placeholder="Enter username" required 
+                                           style="width: 100%; padding: 1rem; border-radius: 10px; background: var(--glass-bg); color: var(--text-light); border: 1px solid var(--glass-border);">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Access Type</label>
+                                    <select name="access_type" style="width: 100%; padding: 1rem; border-radius: 10px; background: var(--glass-bg); color: var(--text-light); border: 1px solid var(--glass-border);">
+                                        <option value="read">Read Only</option>
+                                        <option value="write">Read & Write</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="margin-top: 2rem;">
+                                <i class="fas fa-share-alt"></i> Grant Access
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Revoke Access Section -->
+                    {% if shared_access %}
+                    <div class="shared-access-list">
+                        <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-user-times"></i> Manage Existing Access</h3>
+                        <div class="file-grid">
+                            {% for access in shared_access %}
+                            <div class="access-card glass-effect">
+                                <div class="access-info">
+                                    <h4>{{ access[2] }}</h4>
+                                    <div class="access-meta">
+                                        <span>Shared with: <strong>{{ access[3] }}</strong></span>
+                                        <span>Access: <span class="access-badge {% if access[4] == 'write' %}access-write{% else %}access-read{% endif %}">{{ access[4]|title }}</span></span>
+                                        <span>Since: {{ access[5].strftime('%Y-%m-%d %H:%M') }}</span>
+                                    </div>
+                                </div>
+                                <div class="file-actions">
+                                    <form method="POST" action="/revoke-access" style="display: inline;">
+                                        <input type="hidden" name="access_id" value="{{ access[0] }}">
+                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to revoke access from {{ access[3] }}?')">
+                                            <i class="fas fa-ban"></i> Revoke Access
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div style="margin-top: 3rem; padding: 1.5rem; background: rgba(0,0,0,0.2); border-radius: 10px;">
+                        <h4><i class="fas fa-shield-alt"></i> Advanced Access Control Features:</h4>
+                        <ul style="margin-top: 1rem; padding-left: 1.5rem;">
+                            <li>Fine-grained permission system</li>
+                            <li>Instant access revocation</li>
+                            <li>Blockchain-based verification</li>
+                            <li>Attack prevention mechanisms</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manage Access Section -->
+            <div id="manage-access-section" class="content-section">
+                <div class="glass-effect" style="padding: 2rem;">
+                    <h2><i class="fas fa-user-cog"></i> Manage Access Permissions</h2>
+                    
+                    {% if shared_access %}
+                    <div class="shared-access-list">
+                        <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-list"></i> Files You've Shared ({{ shared_access|length }})</h3>
+                        <div class="file-grid">
+                            {% for access in shared_access %}
+                            <div class="access-card glass-effect">
+                                <div class="access-info">
+                                    <h4>{{ access[2] }}</h4>
+                                    <div class="access-meta">
+                                        <span><i class="fas fa-user"></i> Shared with: <strong>{{ access[3] }}</strong></span>
+                                        <span><i class="fas fa-key"></i> Access: <span class="access-badge {% if access[4] == 'write' %}access-write{% else %}access-read{% endif %}">{{ access[4]|title }}</span></span>
+                                        <span><i class="fas fa-calendar"></i> Since: {{ access[5].strftime('%Y-%m-%d %H:%M') }}</span>
+                                    </div>
+                                </div>
+                                <div class="file-actions">
+                                    <form method="POST" action="/revoke-access" style="display: inline;">
+                                        <input type="hidden" name="access_id" value="{{ access[0] }}">
+                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to revoke access from {{ access[3] }}?')">
+                                            <i class="fas fa-ban"></i> Revoke Access
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-users-slash"></i>
+                        <h3>No Files Shared Yet</h3>
+                        <p>You haven't shared any files with other users yet.</p>
+                        <button class="btn btn-primary" onclick="showSection('share-section')" style="margin-top: 1rem;">
+                            <i class="fas fa-share-alt"></i> Share Your First File
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 3D Particle Background
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('canvas-container');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            // Create particles
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesCount = 5000;
+            const particlesPositions = new Float32Array(particlesCount * 3);
+            const particlesColors = new Float32Array(particlesCount * 3);
+
+            for(let i = 0; i < particlesCount * 3; i += 3) {
+                particlesPositions[i] = (Math.random() - 0.5) * 50;
+                particlesPositions[i + 1] = (Math.random() - 0.5) * 50;
+                particlesPositions[i + 2] = (Math.random() - 0.5) * 50;
+                
+                // Color based on position
+                particlesColors[i] = 0.0 + Math.random() * 0.3;
+                particlesColors[i + 1] = 0.8 + Math.random() * 0.2;
+                particlesColors[i + 2] = 1.0;
+            }
+
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(particlesPositions, 3));
+            particlesGeometry.setAttribute('color', new THREE.BufferAttribute(particlesColors, 3));
+            
+            // Particles material
+            const particlesMaterial = new THREE.PointsMaterial({
+                size: 0.05,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+
+            // Particles mesh
+            const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particlesMesh);
+
+            camera.position.z = 5;
+
+            // Mouse interaction
+            let mouseX = 0;
+            let mouseY = 0;
+
+            document.addEventListener('mousemove', (event) => {
+                mouseX = event.clientX / window.innerWidth - 0.5;
+                mouseY = -event.clientY / window.innerHeight + 0.5;
+            });
+
+            // Animation
+            const animate = () => {
+                requestAnimationFrame(animate);
+                
+                // Rotate particles
+                particlesMesh.rotation.x += 0.0005;
+                particlesMesh.rotation.y += 0.001;
+                
+                // Mouse interaction
+                particlesMesh.rotation.x += mouseY * 0.0005;
+                particlesMesh.rotation.y += mouseX * 0.0005;
+                
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        });
+
+        // Advanced Preloader
+        document.addEventListener('DOMContentLoaded', function() {
+            const loader = document.getElementById('loader');
+            const progressBar = document.getElementById('progressBar');
+            const progressPercentage = document.getElementById('progressPercentage');
+            let progress = 0;
+            
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 100) progress = 100;
+                
+                progressBar.style.width = progress + '%';
+                progressPercentage.textContent = Math.floor(progress) + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        loader.classList.add('hidden');
+                    }, 500);
+                }
+            }, 200);
+        });
+
+        // User Avatar and Session
+        document.addEventListener('DOMContentLoaded', function() {
+            const userName = "{{ username }}";
+            const userAvatar = document.getElementById('userAvatar');
+            const sidebarAvatar = document.getElementById('sidebarAvatar');
+            const userNameElement = document.getElementById('userName');
+            const sidebarUserName = document.getElementById('sidebarUserName');
+            const userSession = document.getElementById('userSession');
+            
+            // Set user name
+            userNameElement.textContent = userName;
+            sidebarUserName.textContent = userName;
+            
+            // Generate avatar from first letter of username
+            if (userName && userName.length > 0) {
+                userAvatar.textContent = userName.charAt(0).toUpperCase();
+                sidebarAvatar.textContent = userName.charAt(0).toUpperCase();
+            }
+            
+            // Update session time
+            function updateSessionTime() {
+                const now = new Date();
+                userSession.textContent = 'Active now';
+            }
+            
+            updateSessionTime();
+            setInterval(updateSessionTime, 60000); // Update every minute
+        });
+
+        // Alert System
+        function showAlert(type, title, message, duration = 5000) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertId = 'alert-' + Date.now();
+            
+            const alert = document.createElement('div');
+            alert.className = `alert ${type}`;
+            alert.id = alertId;
+            
+            const icons = {
+                success: 'fas fa-check-circle',
+                error: 'fas fa-exclamation-circle',
+                warning: 'fas fa-exclamation-triangle',
+                info: 'fas fa-info-circle'
+            };
+            
+            alert.innerHTML = `
+                <div class="alert-icon">
+                    <i class="${icons[type]}"></i>
+                </div>
+                <div class="alert-content">
+                    <div class="alert-title">${title}</div>
+                    <div class="alert-message">${message}</div>
+                </div>
+                <button class="alert-close" onclick="closeAlert('${alertId}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            alertContainer.appendChild(alert);
+            
+            // Show alert with animation
+            setTimeout(() => {
+                alert.classList.add('show');
+            }, 100);
+            
+            // Auto close after duration
+            if (duration > 0) {
+                setTimeout(() => {
+                    closeAlert(alertId);
+                }, duration);
+            }
+        }
+
+        function closeAlert(alertId) {
+            const alert = document.getElementById(alertId);
+            if (alert) {
+                alert.classList.remove('show');
+                setTimeout(() => {
+                    if (alert.parentNode) {
+                        alert.parentNode.removeChild(alert);
+                    }
+                }, 300);
+            }
+        }
+
+        // Demo alerts (remove in production)
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                showAlert('success', 'Welcome Back!', 'Your dashboard is ready with the latest updates.', 4000);
+            }, 1500);
+            
+            setTimeout(() => {
+                showAlert('info', 'Security Update', 'Enhanced encryption protocols are now active.', 5000);
+            }, 3000);
+        });
+
+        // Section Navigation
+        function showSection(sectionId) {
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.querySelectorAll('.sidebar-menu a').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            document.getElementById(sectionId).classList.add('active');
+            event.target.closest('a').classList.add('active');
+        }
+
+        document.querySelectorAll('.sidebar-menu a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                showSection(this.getAttribute('data-section'));
+            });
+        });
+
+        // Update stats
+        document.getElementById('owned-file-count').textContent = '{{ owned_files|length }}';
+        document.getElementById('shared-file-count').textContent = '{{ shared_files|length }}';
+        document.getElementById('shared-by-me-count').textContent = '{{ shared_access|length if shared_access else 0 }}';
+        document.getElementById('space-saved').textContent = '{{ ((owned_files|length + shared_files|length) * 35)|round }}%';
+    </script>
+</body>
+</html>

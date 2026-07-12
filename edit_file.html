@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit File - SecureDedup</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #f093fb;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-light: #ffffff;
+            --text-dark: #333333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--text-light);
+        }
+
+        .glass-effect {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            padding: 1rem 2rem;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--text-light);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: var(--text-dark);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-light);
+            border: 2px solid var(--text-light);
+        }
+
+        .btn-warning {
+            background: #ed8936;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .edit-container {
+            max-width: 800px;
+            margin: 100px auto 2rem;
+            padding: 0 2rem;
+        }
+
+        .edit-form {
+            padding: 3rem;
+        }
+
+        .edit-form h2 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(45deg, var(--accent-color), var(--text-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .file-input {
+            width: 100%;
+            padding: 2rem;
+            border: 2px dashed var(--glass-border);
+            border-radius: 15px;
+            background: var(--glass-bg);
+            margin: 2rem 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .file-input:hover {
+            border-color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .file-input i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--accent-color);
+        }
+
+        .flash {
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 10px;
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+        }
+
+        .flash.success {
+            background: rgba(72, 187, 120, 0.2);
+            color: #48bb78;
+        }
+
+        .flash.error {
+            background: rgba(245, 101, 101, 0.2);
+            color: #f56565;
+        }
+
+        .access-info {
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+
+        .access-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 1rem;
+        }
+
+        .access-owner {
+            background: rgba(237, 137, 54, 0.3);
+            color: #ed8936;
+        }
+
+        .access-write {
+            background: rgba(72, 187, 120, 0.3);
+            color: #48bb78;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar glass-effect">
+            <a href="/" class="logo">
+                <i class="fas fa-shield-alt"></i> SecureDedup
+            </a>
+            <div class="nav-links">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/files">My Files</a>
+                <a href="/logout" class="btn btn-secondary">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="edit-container">
+        <div class="edit-form glass-effect">
+            <h2><i class="fas fa-edit"></i> Edit File: {{ file_name }}</h2>
+            
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="flash success">
+                        {{ messages[0] }}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
+            <div class="access-info">
+                <h3>
+                    <i class="fas fa-info-circle"></i> File Information
+                    <span class="access-badge {% if is_owner %}access-owner{% else %}access-write{% endif %}">
+                        {% if is_owner %}Owner{% else %}Write Access{% endif %}
+                    </span>
+                </h3>
+                <p style="margin-top: 0.5rem; opacity: 0.8;">
+                    {% if is_owner %}
+                    You are the owner of this file. You can upload a new version to replace the current file.
+                    {% else %}
+                    You have write access to this file. You can upload a new version to update it.
+                    {% endif %}
+                </p>
+            </div>
+            
+            <form method="POST" enctype="multipart/form-data">
+                <label class="file-input">
+                    <i class="fas fa-file-upload"></i>
+                    <h3>Select New Version of File</h3>
+                    <p>Choose the updated file to replace the current version</p>
+                    <input type="file" name="file" required 
+                           style="display: none;" 
+                           onchange="document.getElementById('fileName').textContent = this.files[0].name">
+                    <div id="fileName" style="margin-top: 1rem; font-weight: bold; color: var(--accent-color);"></div>
+                </label>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-warning" style="font-size: 1.2rem; padding: 1rem 2rem;">
+                        <i class="fas fa-save"></i> Update File
+                    </button>
+                    <a href="/dashboard" class="btn btn-secondary" style="font-size: 1.2rem; padding: 1rem 2rem;">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </form>
+            
+            <div style="margin-top: 3rem; padding: 1.5rem; background: rgba(0,0,0,0.2); border-radius: 10px;">
+                <h4><i class="fas fa-lightbulb"></i> How File Editing Works:</h4>
+                <ul style="margin-top: 1rem; padding-left: 1.5rem;">
+                    <li>Uploading a new file will replace the current version</li>
+                    <li>The new file will go through secure deduplication process</li>
+                    <li>All users with access will see the updated version</li>
+                    <li>File history and versions are maintained securely</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelector('.file-input').addEventListener('click', function() {
+            this.querySelector('input[type="file"]').click();
+        });
+
+        document.querySelector('input[type="file"]').addEventListener('change', function(e) {
+            if (this.files[0]) {
+                document.getElementById('fileName').textContent = this.files[0].name;
+                document.querySelector('.file-input').style.borderColor = 'var(--accent-color)';
+                document.querySelector('.file-input').style.background = 'rgba(240, 147, 251, 0.1)';
+            }
+        });
+    </script>
+</body>
+</html>

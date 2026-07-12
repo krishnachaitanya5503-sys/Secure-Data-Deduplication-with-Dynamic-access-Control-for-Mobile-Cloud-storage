@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share Files - SecureDedup</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #f093fb;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-light: #ffffff;
+            --text-dark: #333333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--text-light);
+        }
+
+        .glass-effect {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            padding: 1rem 2rem;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--text-light);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: var(--text-dark);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-light);
+            border: 2px solid var(--text-light);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .share-container {
+            max-width: 1000px;
+            margin: 100px auto 2rem;
+            padding: 0 2rem;
+        }
+
+        .share-header {
+            margin-bottom: 2rem;
+        }
+
+        .share-header h2 {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, var(--accent-color), var(--text-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .share-form {
+            padding: 2.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            color: var(--text-light);
+            border: 1px solid var(--glass-border);
+        }
+
+        .form-group select option {
+            background: var(--secondary-color);
+            color: var(--text-light);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            padding: 2rem;
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--accent-color);
+        }
+
+        .feature-card h3 {
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .feature-card p {
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        .flash {
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            border-radius: 10px;
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+        }
+
+        .flash.success {
+            background: rgba(72, 187, 120, 0.2);
+            color: #48bb78;
+        }
+
+        .flash.error {
+            background: rgba(245, 101, 101, 0.2);
+            color: #f56565;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar glass-effect">
+            <a href="/" class="logo">
+                <i class="fas fa-shield-alt"></i> SecureDedup
+            </a>
+            <div class="nav-links">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/upload">Upload</a>
+                <a href="/files">My Files</a>
+                <a href="/logout" class="btn btn-secondary">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="share-container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash success">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="share-header">
+            <h2><i class="fas fa-share-alt"></i> Secure File Sharing</h2>
+            <p style="opacity: 0.9; margin-top: 0.5rem;">Share files with fine-grained access control and blockchain-based security</p>
+        </div>
+
+        <div class="share-form glass-effect">
+            <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-user-plus"></i> Grant Access</h3>
+            <form method="POST">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="fileSelect"><i class="fas fa-file"></i> Select File</label>
+                        <select name="file_id" id="fileSelect" required>
+                            <option value="">Choose a file to share...</option>
+                            {% for file in owned_files %}
+                            <option value="{{ file[0] }}">{{ file[1] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="usernameInput"><i class="fas fa-user"></i> Username</label>
+                        <input type="text" name="username" id="usernameInput" placeholder="Enter username to share with" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="accessType"><i class="fas fa-key"></i> Access Type</label>
+                        <select name="access_type" id="accessType">
+                            <option value="read">Read Only</option>
+                            <option value="write">Read & Write</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-share-alt"></i> Grant Secure Access
+                </button>
+            </form>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card glass-effect">
+                <div class="feature-icon">
+                    <i class="fas fa-fingerprint"></i>
+                </div>
+                <h3>Fine-Grained Control</h3>
+                <p>Precise permission management with blockchain-based verification for each file access request.</p>
+            </div>
+            
+            <div class="feature-card glass-effect">
+                <div class="feature-icon">
+                    <i class="fas fa-exchange-alt"></i>
+                </div>
+                <h3>Dynamic Revocation</h3>
+                <p>Instant access revocation with random stub re-encryption to prevent unauthorized access.</p>
+            </div>
+            
+            <div class="feature-card glass-effect">
+                <div class="feature-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3>Attack Prevention</h3>
+                <p>Protection against key-retaining and stub-retaining attacks using advanced cryptographic techniques.</p>
+            </div>
+            
+            <div class="feature-card glass-effect">
+                <div class="feature-icon">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <h3>High Performance</h3>
+                <p>Optimized algorithms ensure minimal overhead while maintaining maximum security standards.</p>
+            </div>
+        </div>
+
+        <div class="glass-effect" style="padding: 2.5rem; margin-top: 3rem;">
+            <h3><i class="fas fa-info-circle"></i> How Secure Sharing Works</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-top: 1.5rem;">
+                <div>
+                    <h4><i class="fas fa-lock"></i> Encryption</h4>
+                    <p>Files are encrypted using Mixed Message-Locked Encryption with random components for enhanced security.</p>
+                </div>
+                <div>
+                    <h4><i class="fas fa-key"></i> Key Management</h4>
+                    <p>Secure key distribution and management with dynamic re-encryption capabilities.</p>
+                </div>
+                <div>
+                    <h4><i class="fas fa-sync"></i> Access Control</h4>
+                    <p>Real-time access control with instant revocation and blockchain-based verification.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
